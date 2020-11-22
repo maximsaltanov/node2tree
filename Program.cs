@@ -11,14 +11,15 @@ client.DefaultRequestHeaders.Add("secret-key", "$2b$10$FRKBdPsyV27ReVeMpo83U.BYS
 
 var dataService = new DataService(client);
 var items = await dataService.GetItemsAsync();
+
 var nodes = items.ToTree();
 var display = nodes.MakeFormattedString();
 
 Console.WriteLine(display);
 
 public static class Node2Tree
-{
-	// Convert flat id-parent list to tree
+{	
+	// Convert flat id-parent list to tree (METHOD 1)	
 	public static Node ToTree(this IEnumerable<Item> items)
 	{
 		if (items == null) return new Node();
@@ -29,39 +30,52 @@ public static class Node2Tree
 		return rootNode;
 	}
 
+	// Convert flat id-parent list to tree (METHOD 2 - another syntax with yield)
+	////public static Node ToTree(this IEnumerable<Item> items)
+	////{
+	////	if (items == null) return new Node();
+
+	////	return items.GenerateTree().FirstOrDefault();
+	////}	
+
+	////private static IEnumerable<Node> GenerateTree(this IEnumerable<Item> items, int parentId = -1)
+	////{
+	////	var childItems = items.Where(c => c.Parent == parentId);
+
+	////	foreach (var c in childItems)
+	////	{
+	////		yield return new Node
+	////		{
+	////			Id = c.Id,
+	////			Text = c.Text,
+	////			Childs = items.GenerateTree(c.Id).ToList()
+	////		};
+	////	}
+	////}
+
 	// Make string with nmarkup hierarchy of nodes
 	public static string MakeFormattedString(this Node node)
 	{
 		var result = new StringBuilder();
 		PrintTree(node, result, 0);
 		return $"<ul>\n{result}</ul>";
-	}
+	}	
 
-	// output requirements:
-	// <ul>
-	// 		<li>{id}. {text} ({level})</li>
-	// 		<ul>
-	//			<li>{id}. {text} ({level})</li>
-	//			....
-	//			<li>{id}. {text} ({level})</li>
-	// 		</ul>
-	// </ul>
+    private static void GenerateTree(Node node, IEnumerable<Item> items)
+    {
+        var childItems = items.Where(item => item.Parent == node.Id).ToArray();
+        foreach (var childItem in childItems)
+        {
+            node.Childs.Add(ConvertToNode(childItem));
+        }
 
-	private static void GenerateTree(Node node, IEnumerable<Item> items)
-	{
-		var childItems = items.Where(item => item.Parent == node.Id).ToArray();
-		foreach (var childItem in childItems)
-		{
-			node.Childs.Add(ConvertToNode(childItem));
-		}
+        foreach (var nodeItem in node.Childs)
+        {
+            GenerateTree(nodeItem, items);
+        }
+    }
 
-		foreach (var nodeItem in node.Childs)
-		{
-			GenerateTree(nodeItem, items);
-		}
-	}
-
-	private static Node ConvertToNode(Item item)
+    private static Node ConvertToNode(Item item)
 	{
 		return new Node
 		{
